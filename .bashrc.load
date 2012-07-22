@@ -1,8 +1,12 @@
 # include what you want
 
+# personal bin
 export PATH=$PATH:$HOME/bin
 
-# add this to the .bashrc: . $HOME/.bashrc.load
+# setup prompt
+export PS1="\[$(tput bold)\]\[$(tput setaf 2)\][\[$(tput setaf 6)\]\h\[$(tput setaf 2)\]] [\[$(tput setaf 5)\]\w\[$(tput setaf 2)\]]\[$(tput setaf 3)\] \\$ \[$(tput sgr0)\]"
 
-####
-# put any bash customizations in here
+# aliases
+alias tmux='tmux -2'
+
+# add this to the .bashrc: . $HOME/.bashrc.load
