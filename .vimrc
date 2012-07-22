@@ -4,6 +4,7 @@
 set nocompatible                " necessary to ensure that vim runs as vim
 
 " enable pathogen plugin:
+runtime bundle/vim-pathogen/autoload/pathogen.vim
 silent! call pathogen#infect()
 
 syntax enable                   " enable syntax highlighting
