@@ -11,9 +11,21 @@ alias tmux='tmux -2';
 
 # dropbox
 if [ -z `which dropbox` ]; then
-    alias ds ='dropbox status';
+    alias ds='dropbox status';
     alias dfs='dropbox filestatus';
     alias dls='dropbox ls';
 fi
 
 # add this to the .bashrc: . $HOME/.bashrc.load
+
+# setup our awesome ssh agent so our remote sessions never die.
+function reconnect_ssh_agent() {
+    if [[ -n $TMUX ]]; then
+        NEW_SSH_AUTH_SOCK=`tmux showenv|grep ^SSH_AUTH_SOCK|cut -d = -f 2`
+        if [[ -n $NEW_SSH_AUTH_SOCK ]] && [[ -S $NEW_SSH_AUTH_SOCK ]]; then
+            SSH_AUTH_SOCK=$NEW_SSH_AUTH_SOCK
+        fi
+    fi
+}
+
+PROMPT_COMMAND='reconnect_ssh_agent';
