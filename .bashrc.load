@@ -10,7 +10,7 @@ export PS1="\[$(tput bold)\]\[$(tput setaf 2)\][\[$(tput setaf 6)\]\h\[$(tput se
 alias tmux='tmux -2';
 
 # dropbox
-if [ -z `which dropbox` ]; then
+if [ -z `which dropbox 2> /dev/null` ]; then
     alias ds='dropbox status';
     alias dfs='dropbox filestatus';
     alias dls='dropbox ls';
