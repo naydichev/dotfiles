@@ -29,3 +29,11 @@ function reconnect_ssh_agent() {
 }
 
 PROMPT_COMMAND='reconnect_ssh_agent';
+
+# history settings
+shopt -s histappend
+PROMPT_COMMAND="$PROMPT_COMMAND; history -a";
+
+# cd fixes
+shopt -s cdspell
+# CDPATH='.:..:../..';
