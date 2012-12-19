@@ -1,7 +1,7 @@
 # include what you want
 
 # personal bin
-export PATH=$PATH:$HOME/bin;
+export PATH=$PATH:$HOME/bin:/usr/local/bin;
 
 # setup prompt
 export PS1="\[$(tput bold)\]\[$(tput setaf 2)\][\[$(tput setaf 6)\]\h\[$(tput setaf 2)\]] [\[$(tput setaf 5)\]\w\[$(tput setaf 2)\]]\[$(tput setaf 3)\] \\$ \[$(tput sgr0)\]";
