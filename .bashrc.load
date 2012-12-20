@@ -10,7 +10,7 @@ export PS1="\[$(tput bold)\]\[$(tput setaf 2)\][\[$(tput setaf 6)\]\h\[$(tput se
 alias tmux='tmux -2';
 
 # dropbox
-if [ -z `which dropbox 2> /dev/null` ]; then
+if [ -n `which dropbox 2> /dev/null` ]; then
     alias ds='dropbox status';
     alias dfs='dropbox filestatus';
     alias dls='dropbox ls';
@@ -37,3 +37,10 @@ PROMPT_COMMAND="$PROMPT_COMMAND; history -a";
 # cd fixes
 shopt -s cdspell
 # CDPATH='.:..:../..';
+
+# bash completion for mac
+if [ -n `which brew 2> /dev/null` ]; then
+    if [ -f `brew --prefix`/etc/bash_completion ]; then
+        . `brew --prefix`/etc/bash_completion;
+    fi
+fi
