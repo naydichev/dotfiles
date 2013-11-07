@@ -1,0 +1,8 @@
+#!/bin/bash
+
+(ssh -l julian xenon.naydichev.com ": > .irssi/fnotify ; tail -f .irssi/fnotify " | while read heading message;
+do
+    terminal-notifier -title "${heading/</\//}" -message "${message/</\//}" &> /dev/null;
+done);
+
+terminal-notifier -title "SSH THINGY DIED" -message "FIX IT FIX IT FIX IT";
