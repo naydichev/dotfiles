@@ -1,0 +1,25 @@
+# aliases
+alias handbrake='HandBrakeCLI';
+
+# dropbox
+if [[ -n `which dropbox 2> /dev/null` ]]; then
+    alias ds='dropbox status';
+    alias dfs='dropbox filestatus';
+    alias dls='dropbox ls';
+fi
+
+_shows() {
+    local cur;
+    COMPREPLY=();
+    cur=${COMP_WORDS[COMP_CWORD]};
+
+    if [[ $COMP_CWORD -eq 1 ]]; then
+        COMPREPLY=( $( compgen -W '-h -v --help --verbose --add-show -a' -- $cur ) );
+    elif [[ $COM_CWORD -eq 2 ]]; then
+        COMPREPLY=( $( compgen -W "`shows -n`" -- $cur ) );
+    fi
+
+    return 0
+}
+
+complete -F _shows shows

@@ -1,29 +1,14 @@
-# add this to the .bashrc: . $HOME/.bashrc.load
-
 # personal bin
 export PATH=$PATH:$HOME/bin:/usr/local/bin;
 
 # setup prompt
 export PS1="\[$(tput bold)\]\[$(tput setaf 2)\][\[$(tput setaf 6)\]\h\[$(tput setaf 2)\]] [\[$(tput setaf 5)\]\w\[$(tput setaf 2)\]]\[$(tput setaf 3)\] \\$ \[$(tput sgr0)\]";
 
-# aliases
-alias tmux='tmux -2';
-alias handbrake='HandBrakeCLI';
+OS=`uname`;
 
-# dropbox
-if [[ -n `which dropbox 2> /dev/null` ]]; then
-    alias ds='dropbox status';
-    alias dfs='dropbox filestatus';
-    alias dls='dropbox ls';
+if [[ -x $HOME/.bashrc.$OS ]]; then
+    . $HOME.bashrc.$OS;
 fi
-
-# bash completion for mac
-if [[ -n `which brew 2> /dev/null` ]]; then
-    if [ -f `brew --prefix`/etc/bash_completion ]; then
-        . `brew --prefix`/etc/bash_completion;
-    fi
-fi
-
 
 # setup our awesome ssh agent so our remote sessions never die.
 function reconnect_ssh_agent() {
@@ -44,19 +29,3 @@ PROMPT_COMMAND="$PROMPT_COMMAND; history -a";
 # cd fixes
 shopt -s cdspell
 # CDPATH='.:..:../..';
-
-_shows() {
-    local cur;
-    COMPREPLY=();
-    cur=${COMP_WORDS[COMP_CWORD]};
-
-    if [[ $COMP_CWORD -eq 1 ]]; then
-        COMPREPLY=( $( compgen -W '-h -v --help --verbose --add-show -a' -- $cur ) );
-    elif [[ $COM_CWORD -eq 2 ]]; then
-        COMPREPLY=( $( compgen -W "`shows -n`" -- $cur ) );
-    fi
-
-    return 0
-}
-
-complete -F _shows shows
