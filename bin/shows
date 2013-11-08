@@ -1,0 +1,275 @@
+#!/usr/bin/python
+
+import argparse
+import glob
+import inspect
+import os.path
+import re
+import sys
+
+class Shows:
+
+    def __init__(self, options={}):
+        self.options = {
+            "debug": False,
+            "verbose": False,
+            "force": False,
+            "listAllEpisodes": True,
+            "showlistFilename": ".showlist",
+            "showlistFilepath": "",
+            "showPath": os.path.join("/Video", "TV", ""),
+            "showCriteria": "Season*"
+        }
+
+        self.options["showlistFilepath"] = os.path.expanduser(
+            "~/{}".format(self.options["showlistFilename"])
+        )
+
+        # update with whatever we got
+        self.options.update(options)
+
+        # inits
+        self.skipLead = False
+
+        # build the showList (we'll probably need it)
+        self.buildShowList()
+
+        # read the showlist file
+        self.buildWatchingList()
+
+
+    def debug(self, message, newline=True):
+        if self.options.get("debug"):
+            nl = ""
+
+            func = inspect.stack()[1][3]
+            if newline:
+                nl = "\n"
+            sys.stderr.write("D| {}${}{}".format(func, message, nl))
+
+    def verbose(self, message, newline=True):
+        if self.options.get("verbose"):
+            nl = ""
+
+            if newline:
+                nl = "\n"
+                self.skipLead = True
+
+            lead = "V|"
+            if self.skipLead:
+                lead = ""
+                self.skipLead = False
+
+            sys.stderr.write("{} {}{}".format(lead, message, nl))
+
+    def buildShowList(self):
+        if not self.options.get("showPath") or not self.options.get("showCriteria"):
+            raise ValueError("showPath and showCriteria are mandatory")
+
+        self.debug("called buildShowList")
+
+        seasonPath = "{}*/{}".format(
+            self.options.get("showPath"),
+            self.options.get("showCriteria")
+        )
+
+        shows = {}
+
+        # self.debug("seasonPath: {}".format(seasonPath))
+        for season_folder in glob.glob(seasonPath):
+
+            show = season_folder.split(os.path.sep)[3]
+            self.verbose("probing {} ->".format(show), False)
+
+            shows[show] = self.listEpisodesForSeasonPath(season_folder)
+            self.verbose("found {} episodes".format(len(shows[show])))
+
+        self.shows = shows
+
+    def buildWatchingList(self):
+        shows = []
+
+        if not self.options.get("showlistFilepath"):
+            raise ValueError("showlistFilepath is mandatory")
+
+        try:
+            with open(self.options.get("showlistFilepath"), "r") as _f:
+                for show in _f.read().split("\n"):
+                    if len(show) == 0:
+                        continue
+
+                    shows.append(show)
+        except IOError:
+            # no file? meh, no biggie.
+            pass
+
+        self.watching = shows
+
+    def listEpisodesForSeasonPath(self, seasonPath):
+        episodes = []
+
+        seasonPath = "{}/*".format(seasonPath)
+        # self.debug("seasonPath {}".format(seasonPath))
+
+        for episode_path in glob.glob(seasonPath):
+            episodes.append(episode_path.split(os.path.sep)[-1])
+
+        return sorted(episodes)
+
+    def printAllShows(self):
+
+        # we're gonna print everything
+        
+        shows = self.shows.copy()
+
+        for show in self.watching:
+            if not shows.get(show):
+                shows[show] = []
+
+        self.printFound(shows)
+
+
+    def printFound(self, shows=None):
+        if not shows:
+            shows = self.shows
+
+        for show in self.shows.keys():
+            print show
+
+            if self.options.get("listAllEpisodes"):
+                self.printEpisodes(show)
+
+    def printEpisodes(self, show):
+
+        if not self.shows.get(show):
+            raise ValueError(show + " does not exist")
+
+        for episode in self.shows.get(show):
+            print "  --> {}".format(episode)
+
+    def printUnwatched(self):
+
+        unwatched = self.genUnwatched()
+
+        for show in unwatched:
+            print show
+
+            if self.options.get("listAllEpisodes"):
+                self.printEpisodes(show)
+
+    def purgeUnwatched(self):
+
+        if not self.options.get("showCriteria"):
+            raise ValueError("showCriteria is mandatory")
+
+        unwatched = self.genUnwatched()
+
+        season_prefix = self.options.get("showCriteria").replace("*", "")
+
+        for show in unwatched:
+            for episode in self.shows[show][::]:
+                season = "{} {:d}".format(season_prefix, int(re.match("^S(\d+)E", episode).groups()[0]))
+                season_path = os.path.join(self.options["showPath"], show, season)
+                episode_path = os.path.join(season_path, episode)
+
+                resp = 'n'
+                if not self.options.get("force"):
+                    resp = raw_input("Delete {} ? (y/N): ".format(episode_path))
+                else:
+                    resp = 'y'
+
+                if resp.lower() == 'y':
+                    self.deleteFile(episode_path)
+
+                    self.shows[show].remove(episode)
+
+                    if len(self.shows[show]) == 0:
+                        self.deleteEmptyDirectory(season_path)
+
+    def deleteFile(self, episode_path):
+        os.remove(episode_path)
+
+    def deleteEmptyDirectory(self, season_path):
+        os.rmdir(season_path)
+
+    def genUnwatched(self):
+        unwatched = []
+
+        for show in self.shows.keys():
+            if show not in self.watching:
+                unwatched.append(show)
+
+        return unwatched
+
+    def addWatchedShow(self, shows):
+        self.watching.extend(shows)
+
+        self.saveWatchingList()
+
+    def addFoundShows(self):
+        self.watching.extend(self.shows.keys())
+
+        self.saveWatchingList()
+
+    def saveWatchingList(self):
+        with open(self.options.get("showlistFilepath"), "w") as _f:
+
+            self.watching = list(set(self.watching))
+            self.debug("writing {}".format(self.watching))
+            showsStr = "\n".join(sorted(self.watching))
+
+            _f.write(showsStr + "\n")
+
+            self.verbose("wrote watching list")
+
+def main():
+
+    options = { "verbose": False, "debug": False }
+    parser = argparse.ArgumentParser()
+
+    _file_name = ".showlist"
+    # the following are mutually exclusive, in case the function call didn't give it away
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-A", "--add-all-shows", help="Add all shows found to {}".format(_file_name), action="store_true")
+    group.add_argument("-a", "--add-show", help="Add a show to the {} file".format(_file_name), nargs='*', action='append')
+    group.add_argument("-l", "--list-shows", help="List all shows in the {} file".format(_file_name), action="store_true")
+    group.add_argument("-p", "--purge", help="Remove shows", action="store_true")
+
+    # oh, and some other stuff
+    parser.add_argument("-n", "--no-list-episodes", help="Only list shows, not episodes", action="store_true")
+    parser.add_argument("-f", "--force", help="Used with -p, does not prompt you to delete each episode.", action="store_true")
+    parser.add_argument("-v", "--verbose", help="Verbose Output", action="store_true")
+    parser.add_argument("-d", "--debug", help="Debug Output", action="store_true")
+
+    args = parser.parse_args()
+
+    if args.verbose:
+        options["verbose"] = True
+
+    if args.no_list_episodes:
+        options["listAllEpisodes"] = False
+
+    if args.force:
+        options["force"] = True
+
+    if args.debug:
+        options["debug"] = True
+
+    if options["debug"]:
+        print args
+
+    shows = Shows(options)
+
+    if args.add_show:
+        shows.addWatchedShow([el for elements in args.add_show for el in elements])
+    elif args.add_all_shows:
+        shows.addFoundShows()
+    elif args.list_shows:
+        shows.printAllShows()
+    elif args.purge:
+        shows.purgeUnwatched()
+    else:
+        shows.printUnwatched()
+
+if __name__ == "__main__":
+    main()

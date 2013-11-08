@@ -15,8 +15,10 @@ _shows() {
 
     if [[ $COMP_CWORD -eq 1 ]]; then
         COMPREPLY=( $( compgen -W '-h -v --help --verbose --add-show -a' -- $cur ) );
-    elif [[ $COM_CWORD -eq 2 ]]; then
-        COMPREPLY=( $( compgen -W "`shows -n`" -- $cur ) );
+    elif [[ $COMP_CWORD -eq 2 ]]; then
+        SHOWS=`shows -n | sed -e "s/^/'/g" -e "s/$/'/g" | tr '\n' ' '`;
+        SHOWS='"@midnight" "South\ Park"'
+        COMPREPLY=( $( compgen -W "$SHOWS" -- $cur ) );
     fi
 
     return 0
