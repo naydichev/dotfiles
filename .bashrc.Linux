@@ -1,6 +1,9 @@
 # aliases
 alias handbrake='HandBrakeCLI';
 
+# fix my mac crap
+alias free='/usr/bin/free';
+
 # dropbox
 if [[ -n `which dropbox 2> /dev/null` ]]; then
     alias ds='dropbox status';
