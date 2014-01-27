@@ -17,7 +17,7 @@ class Shows:
             "listAllEpisodes": True,
             "showlistFilename": ".showlist",
             "showlistFilepath": "",
-            "showPath": os.path.join("/Video", "TV", ""),
+            "showPath": os.path.join("/opt", "media", "TV", ""),
             "showCriteria": "Season*"
         }
 
@@ -62,6 +62,16 @@ class Shows:
 
             sys.stderr.write("{} {}{}".format(lead, message, nl))
 
+    def getShowFromPath(self, path):
+        strLen = len(self.options.get("showPath"))
+        trimmed = path[(path.find(self.options.get("showPath")) + strLen):]
+        show, season = trimmed.split(os.path.sep)
+        self.debug("{}, {}, {}".format(self.options.get("showPath"), path, show))
+
+        self.debug("show: {}".format(show))
+
+        return show, season
+
     def buildShowList(self):
         if not self.options.get("showPath") or not self.options.get("showCriteria"):
             raise ValueError("showPath and showCriteria are mandatory")
@@ -73,18 +83,32 @@ class Shows:
             self.options.get("showCriteria")
         )
 
+        self.debug("seasonPath: {}".format(seasonPath))
+
         shows = {}
 
         # self.debug("seasonPath: {}".format(seasonPath))
-        for season_folder in glob.glob(seasonPath):
+        seasonFolders = glob.glob(seasonPath)
 
-            show = season_folder.split(os.path.sep)[3]
-            self.verbose("probing {} ->".format(show), False)
+        # self.debug(seasonFolders)
 
-            shows[show] = self.listEpisodesForSeasonPath(season_folder)
+        for season_folder in seasonFolders:
+
+            show, season = self.getShowFromPath(season_folder)
+
+            self.verbose("probing {}{} ->".format(show, season_folder), False)
+
+            if not shows.get(show):
+                shows[show] = {}
+
+            if not shows.get(show).get(season):
+                shows[show][season] = []
+
+            shows[show][season].extend(self.listEpisodesForSeasonPath(season_folder))
             self.verbose("found {} episodes".format(len(shows[show])))
 
-        self.shows = shows
+
+        self.shows = {k: shows[k] for k in shows.keys() if len(shows[k]) > 0}
 
     def buildWatchingList(self):
         shows = []
@@ -111,7 +135,10 @@ class Shows:
         seasonPath = "{}/*".format(seasonPath)
         # self.debug("seasonPath {}".format(seasonPath))
 
-        for episode_path in glob.glob(seasonPath):
+        episodesPath = glob.glob(seasonPath)
+        # self.debug(episodesPath)
+
+        for episode_path in episodesPath:
             episodes.append(episode_path.split(os.path.sep)[-1])
 
         return sorted(episodes)
@@ -124,7 +151,7 @@ class Shows:
 
         for show in self.watching:
             if not shows.get(show):
-                shows[show] = []
+                shows[show] = {}
 
         self.printFound(shows)
 
@@ -144,8 +171,15 @@ class Shows:
         if not self.shows.get(show):
             raise ValueError(show + " does not exist")
 
-        for episode in self.shows.get(show):
-            print "  --> {}".format(episode)
+        for season in sorted(self.shows.get(show).keys()):
+            episodes = sorted(self.shows.get(show).get(season))
+
+#            if len(episodes) is 0:
+#                break
+
+            print " # {}".format(season)
+            for episode in sorted(self.shows.get(show).get(season)):
+                print "    --> {}".format(episode)
 
     def printUnwatched(self):
 
@@ -167,24 +201,25 @@ class Shows:
         season_prefix = self.options.get("showCriteria").replace("*", "")
 
         for show in unwatched:
-            for episode in self.shows[show][::]:
-                season = "{} {:d}".format(season_prefix, int(re.match("^S(\d+)E", episode).groups()[0]))
+            for season in sorted(self.shows.get(show).keys()):
                 season_path = os.path.join(self.options["showPath"], show, season)
-                episode_path = os.path.join(season_path, episode)
+                episodes = sorted(self.shows.get(show).get(season))
+                for episode in episodes:
+                    episode_path = os.path.join(season_path, episode)
 
-                resp = 'n'
-                if not self.options.get("force"):
-                    resp = raw_input("Delete {} ? (y/N): ".format(episode_path))
-                else:
-                    resp = 'y'
+                    resp = "n"
+                    if not self.options.get("force"):
+                        resp = raw_input("Delete {} ? (y/N): ".format(episode_path))
+                    else:
+                        resp = "y"
 
-                if resp.lower() == 'y':
-                    self.deleteFile(episode_path)
+                    if resp.lower() == "y":
+                        self.deleteFile(episode_path)
 
-                    self.shows[show].remove(episode)
+                        self.shows[show].remove(episode)
 
-                    if len(self.shows[show]) == 0:
-                        self.deleteEmptyDirectory(season_path)
+                if len(episodes) == 0:
+                    self.deleteEmptyDirectory(season_path)
 
     def deleteFile(self, episode_path):
         os.remove(episode_path)
@@ -231,8 +266,8 @@ def main():
     # the following are mutually exclusive, in case the function call didn't give it away
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-A", "--add-all-shows", help="Add all shows found to {}".format(_file_name), action="store_true")
-    group.add_argument("-a", "--add-show", help="Add a show to the {} file".format(_file_name), nargs='*', action='append')
-    group.add_argument("-l", "--list-shows", help="List all shows in the {} file".format(_file_name), action="store_true")
+    group.add_argument("-a", "--add-show", help="Add a show to the list in {}".format(_file_name), nargs="*", action="append")
+    group.add_argument("-l", "--list-shows", help="List all shows (including those listed in {})".format(_file_name), action="store_true")
     group.add_argument("-p", "--purge", help="Remove shows", action="store_true")
 
     # oh, and some other stuff
