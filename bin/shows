@@ -247,14 +247,14 @@ class Shows:
 
                     resp = "n"
                     if not self.options.get("force"):
-                        resp = raw_input("Delete {} ? (y/N): ".format(episode_path))
+                        resp = raw_input("Delete {} - {} ? (y/N): ".format(show, episode))
                     else:
                         resp = "y"
 
                     if resp.lower() == "y":
                         self.deleteFile(episode_path)
 
-                        self.shows[show].remove(episode)
+                        self.shows.get(show).get(season).remove(episode)
 
                 if len(episodes) == 0:
                     self.deleteEmptyDirectory(season_path)
