@@ -256,7 +256,7 @@ class Shows:
 
                         self.shows.get(show).get(season).remove(episode)
 
-                if len(episodes) == 0:
+                if len(self.shows.get(show).get(season)) == 0:
                     self.deleteEmptyDirectory(season_path)
 
     def deleteFile(self, episode_path):
