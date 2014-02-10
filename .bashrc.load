@@ -7,7 +7,7 @@ export PS1="\[$(tput bold)\]\[$(tput setaf 2)\][\[$(tput setaf 6)\]\h\[$(tput se
 OS=`uname`;
 
 if [[ -e $HOME/.bashrc.$OS ]]; then
-    . $HOME.bashrc.$OS;
+    . $HOME/.bashrc.$OS;
 fi
 
 # setup our awesome ssh agent so our remote sessions never die.

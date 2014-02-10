@@ -94,3 +94,12 @@ noremap <leader>fr :FufMruFile<CR>
 noremap <leader>ft :FufTag<CR>
 noremap <leader>fb :FufBuffer<CR>
 
+" things I acquired from Damian Conway
+
+"====[ Always turn on syntax highlighting for diffs ]=========================
+    " use the filetype mechanism to select automatically...
+    filetype on
+    augroup PatchDiffHighlight
+        autocmd!
+        autocmd FileType  diff   syntax enable
+    augroup END
