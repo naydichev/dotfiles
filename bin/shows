@@ -7,6 +7,15 @@ import os.path
 import re
 import sys
 
+from math import ceil
+
+class color:
+    reset = '\033[m'
+    episode = '\033[1;36m\033[45m'
+    title = '\033[1;30m\033[47m'
+    season = '\033[0m'
+    show = '\033[32m'
+
 class Shows:
 
     def __init__(self, options={}):
@@ -17,7 +26,7 @@ class Shows:
             "listAllEpisodes": True,
             "showlistFilename": ".showlist",
             "showlistFilepath": "",
-            "showPath": os.path.join("/Video", "TV", ""),
+            "showPath": os.path.join("/opt", "media", "TV", ""),
             "showCriteria": "Season*"
         }
 
@@ -62,6 +71,16 @@ class Shows:
 
             sys.stderr.write("{} {}{}".format(lead, message, nl))
 
+    def getShowFromPath(self, path):
+        strLen = len(self.options.get("showPath"))
+        trimmed = path[(path.find(self.options.get("showPath")) + strLen):]
+        show, season = trimmed.split(os.path.sep)
+        self.debug("{}, {}, {}".format(self.options.get("showPath"), path, show))
+
+        self.debug("show: {}".format(show))
+
+        return show, season
+
     def buildShowList(self):
         if not self.options.get("showPath") or not self.options.get("showCriteria"):
             raise ValueError("showPath and showCriteria are mandatory")
@@ -73,18 +92,32 @@ class Shows:
             self.options.get("showCriteria")
         )
 
+        self.debug("seasonPath: {}".format(seasonPath))
+
         shows = {}
 
         # self.debug("seasonPath: {}".format(seasonPath))
-        for season_folder in glob.glob(seasonPath):
+        seasonFolders = glob.glob(seasonPath)
 
-            show = season_folder.split(os.path.sep)[3]
-            self.verbose("probing {} ->".format(show), False)
+        # self.debug(seasonFolders)
 
-            shows[show] = self.listEpisodesForSeasonPath(season_folder)
+        for season_folder in seasonFolders:
+
+            show, season = self.getShowFromPath(season_folder)
+
+            self.verbose("probing {}{} ->".format(show, season_folder), False)
+
+            if not shows.get(show):
+                shows[show] = {}
+
+            if not shows.get(show).get(season):
+                shows[show][season] = []
+
+            shows[show][season].extend(self.listEpisodesForSeasonPath(season_folder))
             self.verbose("found {} episodes".format(len(shows[show])))
 
-        self.shows = shows
+
+        self.shows = {k: shows[k] for k in shows.keys() if len(shows[k]) > 0}
 
     def buildWatchingList(self):
         shows = []
@@ -111,7 +144,10 @@ class Shows:
         seasonPath = "{}/*".format(seasonPath)
         # self.debug("seasonPath {}".format(seasonPath))
 
-        for episode_path in glob.glob(seasonPath):
+        episodesPath = glob.glob(seasonPath)
+        # self.debug(episodesPath)
+
+        for episode_path in episodesPath:
             episodes.append(episode_path.split(os.path.sep)[-1])
 
         return sorted(episodes)
@@ -124,7 +160,7 @@ class Shows:
 
         for show in self.watching:
             if not shows.get(show):
-                shows[show] = []
+                shows[show] = {}
 
         self.printFound(shows)
 
@@ -134,25 +170,61 @@ class Shows:
             shows = self.shows
 
         for show in self.shows.keys():
-            print show
+            print "{}{}{}".format(color.show, show, color.reset)
 
             if self.options.get("listAllEpisodes"):
                 self.printEpisodes(show)
 
     def printEpisodes(self, show):
 
+        def getIdx(current, columns, rows):
+            return current % rows
+
         if not self.shows.get(show):
             raise ValueError(show + " does not exist")
 
-        for episode in self.shows.get(show):
-            print "  --> {}".format(episode)
+        regex = re.compile('S\d+([\dE]+)\s+-\s+(.*)$')
+        for season in sorted(self.shows.get(show).keys()):
+            episodes = map(lambda z: regex.search(z).groups(), [x.split('.')[:-1][0] for x in sorted(self.shows.get(show).get(season))])
+
+            if len(episodes) == 0:
+                break
+
+            print " > {}{}{}".format(color.season, season, color.reset)
+
+            lengths = [max(len(str(x)) for x in ep) + 2 for ep in zip(*episodes)] # the '2' is for spaces
+            COL_CNT = (238 / (sum(lengths) + 25)) + 1 # the ten is for a buffer, the one for a minimum
+            rows = int(ceil(len(episodes) * 1.0 / COL_CNT))
+            # print "rows {} | len(episodes) {} | COL_CNT {} | lengths {}".format(rows, len(episodes), COL_CNT, lengths)
+
+            columns = {}
+
+            for i in range(0, len(episodes)):
+                episode = episodes[i]
+                idx = getIdx(i, COL_CNT, rows)
+
+                c = columns.get(idx, [])
+                c.append("{padding}{episode_color}{episode}{reset} {title_color}{title}{reset}".format(
+                    padding = " " * 3,
+                    episode = episode[0].ljust(lengths[0]),
+                    title = episode[1].ljust(lengths[1]),
+                    episode_color = color.episode,
+                    title_color = color.title,
+                    reset = color.reset)
+                )
+                columns[idx] = c
+
+
+
+            for c in sorted(columns.keys()):
+                print " ".join(columns.get(c))
 
     def printUnwatched(self):
 
         unwatched = self.genUnwatched()
 
         for show in unwatched:
-            print show
+            print "{}{}{}".format(color.show, show, color.reset)
 
             if self.options.get("listAllEpisodes"):
                 self.printEpisodes(show)
@@ -167,24 +239,25 @@ class Shows:
         season_prefix = self.options.get("showCriteria").replace("*", "")
 
         for show in unwatched:
-            for episode in self.shows[show][::]:
-                season = "{} {:d}".format(season_prefix, int(re.match("^S(\d+)E", episode).groups()[0]))
+            for season in sorted(self.shows.get(show).keys()):
                 season_path = os.path.join(self.options["showPath"], show, season)
-                episode_path = os.path.join(season_path, episode)
+                episodes = sorted(self.shows.get(show).get(season))
+                for episode in episodes:
+                    episode_path = os.path.join(season_path, episode)
 
-                resp = 'n'
-                if not self.options.get("force"):
-                    resp = raw_input("Delete {} ? (y/N): ".format(episode_path))
-                else:
-                    resp = 'y'
+                    resp = "n"
+                    if not self.options.get("force"):
+                        resp = raw_input("Delete {} - {} ? (y/N): ".format(show, episode))
+                    else:
+                        resp = "y"
 
-                if resp.lower() == 'y':
-                    self.deleteFile(episode_path)
+                    if resp.lower() == "y":
+                        self.deleteFile(episode_path)
 
-                    self.shows[show].remove(episode)
+                        self.shows.get(show).get(season).remove(episode)
 
-                    if len(self.shows[show]) == 0:
-                        self.deleteEmptyDirectory(season_path)
+                if len(self.shows.get(show).get(season)) == 0:
+                    self.deleteEmptyDirectory(season_path)
 
     def deleteFile(self, episode_path):
         os.remove(episode_path)
@@ -231,8 +304,8 @@ def main():
     # the following are mutually exclusive, in case the function call didn't give it away
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-A", "--add-all-shows", help="Add all shows found to {}".format(_file_name), action="store_true")
-    group.add_argument("-a", "--add-show", help="Add a show to the {} file".format(_file_name), nargs='*', action='append')
-    group.add_argument("-l", "--list-shows", help="List all shows in the {} file".format(_file_name), action="store_true")
+    group.add_argument("-a", "--add-show", help="Add a show to the list in {}".format(_file_name), nargs="*", action="append")
+    group.add_argument("-l", "--list-shows", help="List all shows (including those listed in {})".format(_file_name), action="store_true")
     group.add_argument("-p", "--purge", help="Remove shows", action="store_true")
 
     # oh, and some other stuff
