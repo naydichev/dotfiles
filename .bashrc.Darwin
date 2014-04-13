@@ -2,9 +2,12 @@
 alias tmux='tmux -2';
 
 # bash completion for mac
-if [[ -n `which brew 2> /dev/null` ]]; then
-    if [ -f `brew --prefix`/etc/bash_completion ]; then
-        . `brew --prefix`/etc/bash_completion;
-    fi
+
+if [ -f $(brew --prefix)/etc/bash_completion ]; then
+  . $(brew --prefix)/etc/bash_completion
 fi
 
+export GOROOT=/usr/local/Cellar/go/1.2.1/libexec
+export GOPATH=$HOME/go
+
+export PATH=$PATH:$GOPATH/bin
