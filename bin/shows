@@ -183,12 +183,18 @@ class Shows:
         if not self.shows.get(show):
             raise ValueError(show + " does not exist")
 
-        regex = re.compile('S\d+([\dE]+)\s+-\s+(.*)$')
+        regex = re.compile('(?:S\d+)?([\dE]+)\s+-\s+(.*)$')
         for season in sorted(self.shows.get(show).keys()):
-            episodes = map(lambda z: regex.search(z).groups(), [x.split('.')[:-1][0] for x in sorted(self.shows.get(show).get(season))])
+            episodes = list()
+            for episode in sorted(self.shows[show][season]):
+                fileNoExt = '.'.join(episode.split('.')[:-1])
+                if regex.search(fileNoExt):
+                    episodes.append(regex.search(fileNoExt).groups())
+                else:
+                    episodes.append(("UNKNOWN", fileNoExt))
 
             if len(episodes) == 0:
-                break
+                continue
 
             print " > {}{}{}".format(color.season, season, color.reset)
 
@@ -206,8 +212,8 @@ class Shows:
                 c = columns.get(idx, [])
                 c.append("{padding}{episode_color}{episode}{reset} {title_color}{title}{reset}".format(
                     padding = " " * 3,
-                    episode = episode[0].ljust(lengths[0]),
-                    title = episode[1].ljust(lengths[1]),
+                    episode = episode[0].strip().ljust(lengths[0]),
+                    title = episode[1].strip().ljust(lengths[1]) if len(episode[1]) else "UNKNOWN",
                     episode_color = color.episode,
                     title_color = color.title,
                     reset = color.reset)
@@ -247,7 +253,13 @@ class Shows:
 
                     resp = "n"
                     if not self.options.get("force"):
-                        resp = raw_input("Delete {} - {} ? (y/N): ".format(show, episode))
+                        resp = raw_input("Delete {}{}{} - {}{}{} ? (y/N): ".format(
+                            color.show,
+                            show,
+                            color.reset,
+                            color.title,
+                            episode,
+                            color.reset))
                     else:
                         resp = "y"
 
