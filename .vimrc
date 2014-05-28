@@ -74,7 +74,7 @@ endif
 
 " thank you kaitlyn for the following:
 vnoremap C :s/^/#/<CR>:nohl<CR>
-vnoremap c :s/^#//<CR>:nohl<CR>
+" vnoremap c :s/^#//<CR>:nohl<CR> - replaced with the autocmd below
 
 map <leader>nt :NERDTree<CR>
 
@@ -94,6 +94,16 @@ noremap <leader>fr :FufMruFile<CR>
 noremap <leader>ft :FufTag<CR>
 noremap <leader>fb :FufBuffer<CR>
 
+" things I acquired from Damian Conway
+
+"====[ Always turn on syntax highlighting for diffs ]=========================
+" use the filetype mechanism to select automatically...
+filetype on
+augroup PatchDiffHighlight
+    autocmd!
+    autocmd FileType  diff   syntax enable
+augroup END
+
 " learn vimscript the hard way
 let mapleader='\'
 let maplocalleader='_'
@@ -109,12 +119,9 @@ nnoremap <leader>' viw<esc>a'<esc>hbi'<esc>lel
 " insert -> normal mode
 inoremap jk <esc>
 inoremap <esc> <nop>
-" things I acquired from Damian Conway
 
-"====[ Always turn on syntax highlighting for diffs ]=========================
-" use the filetype mechanism to select automatically...
-filetype on
-augroup PatchDiffHighlight
-    autocmd!
-    autocmd FileType  diff   syntax enable
-augroup END
+" comment magic
+autocmd FileType javascript nnoremap <buffer> <localleader>c I//<esc>
+autocmd FileType python     nnoremap <buffer> <localleader>c I#<esc>
+autocmd FileType java       nnoremap <buffer> <localleader>c I//<esc>
+autocmd FileType perl       nnoremap <buffer> <localleader>c I#<esc>
