@@ -109,3 +109,12 @@ nnoremap <leader>' viw<esc>a'<esc>hbi'<esc>lel
 " insert -> normal mode
 inoremap jk <esc>
 inoremap <esc> <nop>
+" things I acquired from Damian Conway
+
+"====[ Always turn on syntax highlighting for diffs ]=========================
+" use the filetype mechanism to select automatically...
+filetype on
+augroup PatchDiffHighlight
+    autocmd!
+    autocmd FileType  diff   syntax enable
+augroup END
