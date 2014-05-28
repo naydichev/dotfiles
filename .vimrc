@@ -94,3 +94,18 @@ noremap <leader>fr :FufMruFile<CR>
 noremap <leader>ft :FufTag<CR>
 noremap <leader>fb :FufBuffer<CR>
 
+" learn vimscript the hard way
+let mapleader='\'
+let maplocalleader='_'
+
+" open vimrc, save vimrc
+nnoremap <leader>ev :vsplit $MYVIMRC<CR>
+nnoremap <leader>sv :source $MYVIMRC<CR>
+
+" quote current word
+nnoremap <leader>" viw<esc>a"<esc>hbi"<esc>lel
+nnoremap <leader>' viw<esc>a'<esc>hbi'<esc>lel
+
+" insert -> normal mode
+inoremap jk <esc>
+inoremap <esc> <nop>
