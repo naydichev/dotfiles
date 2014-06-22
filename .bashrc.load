@@ -29,4 +29,6 @@ PROMPT_COMMAND="$PROMPT_COMMAND; history -a";
 # cd fixes
 shopt -s cdspell
 # CDPATH='.:..:../..';
-source ~/.git-completion.bash
+if [[ -f ~/.git-completion.bash ]]; then
+    source ~/.git-completion.bash;
+fi
