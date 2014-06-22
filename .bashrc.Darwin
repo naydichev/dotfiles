@@ -6,8 +6,3 @@ alias tmux='tmux -2';
 if [ -f $(brew --prefix)/etc/bash_completion ]; then
   . $(brew --prefix)/etc/bash_completion
 fi
-
-export GOROOT=/usr/local/Cellar/go/1.2.1/libexec
-export GOPATH=$HOME/go
-
-export PATH=$PATH:$GOPATH/bin
