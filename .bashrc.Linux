@@ -28,3 +28,6 @@ _shows() {
 }
 
 complete -F _shows shows
+
+# get some nice colors going
+eval $(dircolors -b $HOME/.dircolors);
