@@ -32,3 +32,6 @@ shopt -s cdspell
 if [[ -f ~/.git-completion.bash ]]; then
     source ~/.git-completion.bash;
 fi
+
+# get some nice colors going
+eval $(direcolors -b $HOME/.dircolors);
