@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# test for our session
+tmux ls | grep local &> /dev/null;
+
+# attach if there, create otherwise
+if [ $? -eq 0 ]; then
+    tmux -2 attach-session -t local;
+else
+    tmux new-session -d -s local -n mercury;
+    tmux new-window -n radon 'ssh radon';
+    tmux new-window -n chat 'ssh h.di.af -t "screen -dr"';
+    tmux -2 attach-session -t local;
+fi
