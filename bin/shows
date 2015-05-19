@@ -3,11 +3,13 @@
 import argparse
 import glob
 import inspect
+import os
 import os.path
 import re
 import sys
 
 from math import ceil
+from subprocess import call
 
 class color:
     reset = '\033[m'
@@ -319,6 +321,7 @@ def main():
     group.add_argument("-a", "--add-show", help="Add a show to the list in {}".format(_file_name), nargs="*", action="append")
     group.add_argument("-l", "--list-shows", help="List all shows (including those listed in {})".format(_file_name), action="store_true")
     group.add_argument("-p", "--purge", help="Remove shows", action="store_true")
+    group.add_argument("-e", "--edit", help="Open {} for editing".format(_file_name), action="store_true")
 
     # oh, and some other stuff
     parser.add_argument("-n", "--no-list-episodes", help="Only list shows, not episodes", action="store_true")
@@ -353,6 +356,11 @@ def main():
         shows.printAllShows()
     elif args.purge:
         shows.purgeUnwatched()
+    elif args.edit:
+        editor = os.environ.get('EDITOR')
+        if editor is None:
+            editor = 'vim'
+        call([editor, _file_name]);
     else:
         shows.printUnwatched()
 
