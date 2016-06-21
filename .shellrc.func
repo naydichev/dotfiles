@@ -1,0 +1,17 @@
+# outputs string if no kerberos ticket
+function is_stale() {
+    klist -s || echo " [E]"
+}
+
+function reconnect_ssh_agent() {
+    if [[ -n $TMUX ]]; then
+        NEW_SSH_AUTH_SOCK=`tmux showenv|grep ^SSH_AUTH_SOCK|cut -d = -f 2`
+        if [[ -n $NEW_SSH_AUTH_SOCK ]] && [[ -S $NEW_SSH_AUTH_SOCK ]]; then
+            SSH_AUTH_SOCK=$NEW_SSH_AUTH_SOCK
+        fi
+    fi
+}
+
+function vimfind() {
+    /usr/bin/vim $(find -iname "*$1*");
+}

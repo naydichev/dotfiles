@@ -125,3 +125,4 @@ autocmd FileType javascript nnoremap <buffer> <localleader>c I//<esc>
 autocmd FileType python     nnoremap <buffer> <localleader>c I#<esc>
 autocmd FileType java       nnoremap <buffer> <localleader>c I//<esc>
 autocmd FileType perl       nnoremap <buffer> <localleader>c I#<esc>
+autocmd FileType ruby       nnoremap <buffer> <localleader>c I#<esc>

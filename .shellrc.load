@@ -1,34 +1,34 @@
+# import variables
+source .shellrc.vars
+
+# import aliases
+source .shellrc.alias
+
+# import functions
+source .shellrc.func
+
+# setup prompt
+export PS1="\[$(tput bold)\]\[$(tput setaf 2)\][\[$(tput setaf 6)\]\h\[$(tput setaf 2)\]] [\[$(tput setaf 5)\]\w\[$(tput setaf 2)\]]\[$(tput setaf 3)\]\$(is_stale) \\$ \[$(tput sgr0)\]";
+
 # personal bin
 export PATH=$PATH:$HOME/bin:/usr/local/bin;
 
-# setup prompt
-export PS1="\[$(tput bold)\]\[$(tput setaf 2)\][\[$(tput setaf 6)\]\h\[$(tput setaf 2)\]] [\[$(tput setaf 5)\]\w\[$(tput setaf 2)\]]\[$(tput setaf 3)\] \\$ \[$(tput sgr0)\]";
-
-OS=`uname`;
-
-if [[ -e $HOME/.bashrc.$OS ]]; then
-    . $HOME/.bashrc.$OS;
-fi
-
-# setup our awesome ssh agent so our remote sessions never die.
-function reconnect_ssh_agent() {
-    if [[ -n $TMUX ]]; then
-        NEW_SSH_AUTH_SOCK=`tmux showenv|grep ^SSH_AUTH_SOCK|cut -d = -f 2`
-        if [[ -n $NEW_SSH_AUTH_SOCK ]] && [[ -S $NEW_SSH_AUTH_SOCK ]]; then
-            SSH_AUTH_SOCK=$NEW_SSH_AUTH_SOCK
-        fi
-    fi
-}
-
+# in the case of tmux -> ssh
 PROMPT_COMMAND='reconnect_ssh_agent';
 
 # history settings
 shopt -s histappend
-PROMPT_COMMAND="$PROMPT_COMMAND; history -a";
+export PROMPT_COMMAND="$PROMPT_COMMAND; history -a";
 
 # cd fixes
 shopt -s cdspell
-# CDPATH='.:..:../..';
+
+# include git completion if we have it
 if [[ -f ~/.git-completion.bash ]]; then
     source ~/.git-completion.bash;
+fi
+
+# execute OS specific stuff
+if [[ -e $HOME/.bashrc.$OS ]]; then
+    . $HOME/.bashrc.$OS;
 fi
