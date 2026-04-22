@@ -1,0 +1,8 @@
+[init]
+    defaultBranch = main
+
+[include]
+    path = ~/.gitconfig-local
+
+[includeIf "hasconfig:remote.*.url:git@github.com:*/*"]
+    path = ~/.gitconfig-github
