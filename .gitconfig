@@ -4,5 +4,8 @@
 [include]
     path = ~/.gitconfig-local
 
+[include]
+  path = ~/.gitconfig-darwin
+
 [includeIf "hasconfig:remote.*.url:git@github.com:*/*"]
     path = ~/.gitconfig-github

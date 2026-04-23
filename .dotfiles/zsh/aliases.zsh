@@ -1,6 +1,5 @@
 function exists() {
-  which $1 &> /dev/null
-  return $?
+  command -v "$1" &> /dev/null
 }
 
 function make_alias() {
@@ -13,6 +12,8 @@ make_alias vim nvim
 make_alias cat bat
 make_alias ls lsd
 
-if [[ -e "$HOME/.cfg" ]]; then
-  alias config="$(which git) --git-dir=$HOME/.cfg/ --work-tree=$HOME"
+DOTFILES_REPO="$HOME/.dotfiles.git"
+
+if [[ -e "$DOTFILES_REPO" ]]; then
+  alias dit="$(which git) --git-dir=$DOTFILES_REPO --work-tree=$HOME"
 fi
