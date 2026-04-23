@@ -61,10 +61,11 @@ If you've already cloned the repo and just want to run the script locally:
 
 These can't be automated and need to be done by hand:
 
-**1Password**
+**1Password SSH agent**
 - Install and sign in to 1Password
 - Go to Settings → Developer → enable the SSH agent
-- Go to Settings → Developer → enable commit signing
+- Copy the SSH config snippet from 1Password and run: `pbpaste > ~/.ssh/config-1password`
+- Your `~/.ssh/config` already includes this file via `Include ~/.ssh/config-1password` at the top
 - Add your SSH key to your GitHub account if not already there
 
 **Git commit signing**

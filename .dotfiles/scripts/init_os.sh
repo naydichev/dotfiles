@@ -170,6 +170,42 @@ else
   else
     SUMMARY_SKIPPED+=("homebrew casks")
   fi
+
+  FORMULAE=(
+    bat
+    lsd
+    jq
+    wget
+  )
+
+  FORMULAE_LIST=$(printf "\n   - %s" "${FORMULAE[@]}")
+  info "Going to install the following formulae via homebrew:${FORMULAE_LIST}"
+
+  if confirm "Ready to install formulae?" y; then
+    dryrun_safe_exec brew install "${FORMULAE[@]}"
+    SUMMARY_INSTALLED+=("homebrew formulae")
+  else
+    SUMMARY_SKIPPED+=("homebrew formulae")
+  fi
+
+  ## macOS defaults
+
+  if confirm "Apply macOS system preferences?" y; then
+    info "Configuring Dock..."
+    dryrun_safe_exec defaults write com.apple.dock orientation -string "left"
+    dryrun_safe_exec defaults write com.apple.dock autohide -bool true
+    dryrun_safe_exec defaults write com.apple.dock mineffect -string "genie"
+    dryrun_safe_exec killall Dock
+
+    info "Configuring Finder..."
+    dryrun_safe_exec defaults write com.apple.finder ShowPathbar -bool true
+    dryrun_safe_exec defaults write com.apple.finder ShowStatusBar -bool true
+    dryrun_safe_exec killall Finder
+
+    SUMMARY_INSTALLED+=("macOS defaults")
+  else
+    SUMMARY_SKIPPED+=("macOS defaults")
+  fi
 fi
 
 ## LazyVim
