@@ -13,10 +13,10 @@ RESET='\033[0m'
 
 ## -- LOGGING -- ##
 
-info() { echo -e "${BLUE}==>${RESET} ${BOLD}$*${RESET}"; }
+info()    { echo -e "${BLUE}==>${RESET} ${BOLD}$*${RESET}"; }
 success() { echo -e "${GREEN} ✓${RESET} $*"; }
 warning() { echo -e "${YELLOW} !${RESET} $*"; }
-error() { echo -e "${RED} ✗${RESET} $*" >&2; }
+error()   { echo -e "${RED} ✗${RESET} $*" >&2; }
 
 ## -- SUMMARY TRACKING -- ##
 
@@ -86,6 +86,10 @@ if [[ ! -e "$HOME/.dotfiles.git" ]]; then
   dryrun_safe_exec git --git-dir="$HOME/.dotfiles.git" --work-tree="$HOME" checkout
   dryrun_safe_exec git --git-dir="$HOME/.dotfiles.git" --work-tree="$HOME" config status.showUntrackedFiles no
   SUMMARY_INSTALLED+=("dotfiles")
+
+  ## Switch dotfiles remote to SSH now that 1Password is set up
+  info "Switching dotfiles remote to SSH..."
+  dryrun_safe_exec git --git-dir="$HOME/.dotfiles.git" remote set-url origin git@github.com:naydichev/dotfiles.git
 else
   success "dotfiles found"
   SUMMARY_FOUND+=("dotfiles")
@@ -97,7 +101,9 @@ info "Checking for oh-my-zsh..."
 
 if [[ ! -e "$HOME/.oh-my-zsh" ]]; then
   warning "oh-my-zsh not found, installing..."
+  export RUNZSH=no
   dryrun_safe_exec sh -c '$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)'
+  unset RUNZSH
   SUMMARY_INSTALLED+=("oh-my-zsh")
 else
   success "oh-my-zsh found"
@@ -108,7 +114,7 @@ fi
 
 info "Initializing dotfile submodules (powerlevel10k, zsh-autosuggestions, zsh-syntax-highlighting)..."
 
-if [[ ! -e "$HOME/.dotfiles/zsh/themes/powerlevel10k/.git" ]]; then
+if [[ ! -e "$HOME/.dotfiles/zsh/themes/powerlevel10k/README.md" ]]; then
   dryrun_safe_exec git --git-dir="$HOME/.dotfiles.git" --work-tree="$HOME" submodule update --init --recursive
   SUMMARY_INSTALLED+=("zsh submodules")
 else
@@ -153,7 +159,6 @@ else
     busycal
     firefox
     ghostty
-    neovim
     raycast
     readdle-spark
     spotify
@@ -175,6 +180,7 @@ else
     bat
     lsd
     jq
+    neovim
     wget
   )
 
@@ -195,11 +201,15 @@ else
     dryrun_safe_exec defaults write com.apple.dock orientation -string "left"
     dryrun_safe_exec defaults write com.apple.dock autohide -bool true
     dryrun_safe_exec defaults write com.apple.dock mineffect -string "genie"
+    dryrun_safe_exec defaults write com.apple.dock magnification -bool true
+    dryrun_safe_exec defaults write com.apple.dock largesize -int 80
     dryrun_safe_exec killall Dock
 
     info "Configuring Finder..."
     dryrun_safe_exec defaults write com.apple.finder ShowPathbar -bool true
     dryrun_safe_exec defaults write com.apple.finder ShowStatusBar -bool true
+    dryrun_safe_exec defaults write com.apple.finder NewWindowTarget -string "PfHm"
+    dryrun_safe_exec defaults write com.apple.finder NewWindowTargetPath -string "file://${HOME}/"
     dryrun_safe_exec killall Finder
 
     SUMMARY_INSTALLED+=("macOS defaults")
@@ -237,7 +247,7 @@ else
     SUMMARY_SKIPPED+=(".gitconfig-local")
   else
     read -r -p "Enter your git email address: " GIT_EMAIL
-    cat >"$HOME/.gitconfig-local" <<EOF
+    cat > "$HOME/.gitconfig-local" <<EOF
 [user]
     email = ${GIT_EMAIL}
 EOF
@@ -245,11 +255,6 @@ EOF
     SUMMARY_INSTALLED+=(".gitconfig-local")
   fi
 fi
-
-## Switch dotfiles remote to SSH now that 1Password is set up
-
-info "Switching dotfiles remote to SSH..."
-dryrun_safe_exec git --git-dir="$HOME/.dotfiles.git" remote set-url origin git@github.com:naydichev/dotfiles.git
 
 ## -- SUMMARY -- ##
 
@@ -283,4 +288,3 @@ echo "  · Set up 1Password and enable the SSH agent"
 echo "  · Enable 1Password commit signing in developer settings"
 echo "  · Set up powerlevel10k (run: p10k configure)"
 echo -e "───────────────────────────────\n"
-
