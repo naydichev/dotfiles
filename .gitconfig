@@ -5,7 +5,9 @@
     path = ~/.gitconfig-local
 
 [include]
-  path = ~/.gitconfig-darwin
+    path = ~/.gitconfig-darwin-1password
 
 [includeIf "hasconfig:remote.*.url:git@github.com:*/*"]
     path = ~/.gitconfig-github
+[gpg "ssh"]
+	allowedSignersFile = ~/.ssh/allowed_signers

@@ -24,24 +24,48 @@ alias dit='git --git-dir="$HOME/.dotfiles.git" --work-tree="$HOME"'
 To set up a new machine, run:
 
 ```sh
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/naydichev/dotfiles/main/.dotfiles/scripts/init_os.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/naydichev/dotfiles/main/.dotfiles/scripts/init_os.sh)"
 ```
 
 This runs in **dry-run mode by default** — it will print what it would do without making any changes. To actually run it:
 
 ```sh
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/naydichev/dotfiles/main/.dotfiles/scripts/init_os.sh)" -- --run
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/naydichev/dotfiles/main/.dotfiles/scripts/init_os.sh)" -- --run
 ```
 
 ## What it does
 
-- Clones this repo as a bare repo into `~/.dotfiles.git`
+- Clones this repo as a bare repo into `~/.dotfiles.git` (or pulls latest if already present)
 - Installs [oh-my-zsh](https://ohmyz.sh/)
-- Installs [powerlevel10k](https://github.com/romkatv/powerlevel10k) theme
-- Installs zsh plugins (zsh-autosuggestions, zsh-syntax-highlighting)
+- Initializes submodules ([powerlevel10k](https://github.com/romkatv/powerlevel10k), zsh-autosuggestions, zsh-syntax-highlighting)
 - Sets zsh as the default shell
-- Installs homebrew and a set of casks (macOS only)
+- Installs homebrew, casks, and formulae (macOS only)
+- Creates `~/.ssh` with correct permissions (macOS only)
+- Symlinks macOS/1Password-specific configs (macOS only)
 - Optionally sets up [LazyVim](https://www.lazyvim.org/)
+
+## Directory structure
+
+Platform-specific configs live in `.dotfiles/` and are symlinked to their expected locations by the init script:
+
+```
+~/.dotfiles/
+├── git/
+│   └── config-darwin-1password   # -> ~/.gitconfig-darwin-1password (macOS)
+├── ssh/
+│   └── config-darwin-1password   # -> ~/.ssh/config-darwin-1password (macOS)
+├── zsh/
+│   ├── aliases.zsh
+│   ├── exports.zsh
+│   ├── plugins/
+│   └── themes/
+└── scripts/
+    └── init_os.sh
+```
+
+The main config files (`.gitconfig`, `.ssh/config`) include from these symlinked paths. On non-macOS systems, the symlinks don't exist and the includes are silently skipped.
+
+Files ending in `-local` (e.g., `.gitconfig-local`, `.ssh/config-local`) are host-specific and not tracked. The init script prompts for `.gitconfig-local` values; others should be created manually as needed.
 
 ## Manual setup
 
@@ -54,30 +78,20 @@ If you've already cloned the repo and just want to run the script locally:
 
 ## Prerequisites
 
-- git and curl must be available
-- SSH key must be set up for GitHub (for the bare repo clone)
+- Bash 4.0+
+- `git`, `curl`, and `zsh`
 
 ## Manual steps after running the script
 
-These can't be automated and need to be done by hand:
-
-**1Password SSH agent**
-- Install and sign in to 1Password
+**1Password setup**
+- Sign in to 1Password (installed by the script)
 - Go to Settings → Developer → enable the SSH agent
-- Copy the SSH config snippet from 1Password and run: `pbpaste > ~/.ssh/config-1password`
-- Your `~/.ssh/config` already includes this file via `Include ~/.ssh/config-1password` at the top
+- Go to Settings → Developer → enable Git Commit Signing
 - Add your SSH key to your GitHub account if not already there
 
-**Git commit signing**
-- Open 1Password → Settings → Developer → Git Commit Signing
-- Click "Copy Config" to copy the signing config to your clipboard
-- Run: `pbpaste > ~/.gitconfig-darwin`
-- Verify signing works: `git commit --allow-empty -m "test signing"`
-- Check the commit on GitHub shows a "Verified" badge
+The 1Password config files are already set up in `.dotfiles/git/` and `.dotfiles/ssh/` and symlinked by the init script. If your 1Password settings differ (different signing key, etc.), update the files in `.dotfiles/`.
 
-**Powerlevel10k**
-- Run `p10k configure` to set up your prompt
-
-**Dotfiles remote**
-- After 1Password SSH agent is running, verify the remote was switched: `dit remote -v`
-- Test a push to confirm SSH auth is working
+**Verify everything works**
+- Test SSH: `ssh -T git@github.com`
+- Test commit signing: `git commit --allow-empty -m "test signing"` (check for "Verified" badge on GitHub)
+- Verify dotfiles remote: `dit remote -v` (should show `git@github.com:...`)

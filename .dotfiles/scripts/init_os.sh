@@ -2,6 +2,29 @@
 
 set -euo pipefail
 
+## -- BASH VERSION CHECK -- ##
+
+if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
+  echo "Error: This script requires Bash 4.0+ (found ${BASH_VERSION})"
+  exit 1
+fi
+
+## -- DEPENDENCY CHECK -- ##
+
+REQUIRED_CMDS=(git curl zsh)
+MISSING_CMDS=()
+
+for cmd in "${REQUIRED_CMDS[@]}"; do
+  if ! command -v "$cmd" &>/dev/null; then
+    MISSING_CMDS+=("$cmd")
+  fi
+done
+
+if [[ ${#MISSING_CMDS[@]} -gt 0 ]]; then
+  echo "Error: Required commands not found: ${MISSING_CMDS[*]}"
+  exit 1
+fi
+
 ## -- COLORS -- ##
 
 RED='\033[0;31m'
@@ -13,16 +36,17 @@ RESET='\033[0m'
 
 ## -- LOGGING -- ##
 
-info()    { echo -e "${BLUE}==>${RESET} ${BOLD}$*${RESET}"; }
+info() { echo -e "${BLUE}==>${RESET} ${BOLD}$*${RESET}"; }
 success() { echo -e "${GREEN} ✓${RESET} $*"; }
 warning() { echo -e "${YELLOW} !${RESET} $*"; }
-error()   { echo -e "${RED} ✗${RESET} $*" >&2; }
+error() { echo -e "${RED} ✗${RESET} $*" >&2; }
 
 ## -- SUMMARY TRACKING -- ##
 
 SUMMARY_INSTALLED=()
 SUMMARY_FOUND=()
 SUMMARY_SKIPPED=()
+SUMMARY_WARNINGS=()
 
 ## -- DRYRUN -- ##
 
@@ -40,6 +64,10 @@ fi
 
 function exists() {
   command -v "$1" &>/dev/null
+}
+
+function dit() {
+  git --git-dir="$DOTFILES_GIT" --work-tree="$HOME" "$@"
 }
 
 function backup_if_exists() {
@@ -60,17 +88,48 @@ function dryrun_safe_exec() {
 
 function confirm() {
   local prompt=$1
-  local default=${2:-N}
+  local default=${2:-n}
+  local hint="[y/N]"
+  [[ "$default" == "y" ]] && hint="[Y/n]"
 
   if $DRYRUN; then
-    echo -e "  ${YELLOW}[DRYRUN]${RESET} Would prompt: $prompt (defaulting to $default)"
+    echo -e "  ${YELLOW}[DRYRUN]${RESET} Would prompt: $prompt $hint (defaulting to $default)"
     [[ "$default" == "y" ]]
     return
   fi
 
-  read -r -p "$prompt [y/N] " response
-  [[ "${response:-$default}" == "y" ]]
+  read -r -p "$prompt $hint " response
+  response="${response:-$default}"
+  [[ "${response,,}" == "y" ]]
 }
+
+## -- PATH VARIABLES -- ##
+
+DOTFILES_REPO="${DOTFILES_REPO:-naydichev/dotfiles}"
+DOTFILES_REPO_SSH="git@github.com:${DOTFILES_REPO}.git"
+DOTFILES_REPO_HTTPS="https://github.com/${DOTFILES_REPO}.git"
+
+DOTFILES_HOME="$HOME/.dotfiles"
+DOTFILES_GIT="$HOME/.dotfiles.git"
+
+OH_MY_ZSH_HOME="$HOME/.oh-my-zsh"
+OH_MY_ZSH_INSTALL="https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh"
+
+NVIM_CONFIG="$HOME/.config/nvim"
+NVIM_DATA="$HOME/.local/share/nvim"
+NVIM_STATE="$HOME/.local/state/nvim"
+NVIM_CACHE="$HOME/.cache/nvim"
+LAZYVIM_REPO="https://github.com/LazyVim/starter"
+
+SSH_DIR="$HOME/.ssh"
+
+GITCONFIG_LOCAL="$HOME/.gitconfig-local"
+
+GIT_DARWIN_1PASSWORD_SOURCE="$DOTFILES_HOME/git/config-darwin-1password"
+GIT_DARWIN_1PASSWORD_TARGET="$HOME/.gitconfig-darwin-1password"
+
+SSH_DARWIN_1PASSWORD_SOURCE="$DOTFILES_HOME/ssh/config-darwin-1password"
+SSH_DARWIN_1PASSWORD_TARGET="$HOME/.ssh/config-darwin-1password"
 
 ## -- SCRIPT BEGIN -- ##
 
@@ -80,18 +139,28 @@ echo -e "\n${BOLD}Let's get this computer setup!${RESET}\n"
 
 info "Checking for dotfiles..."
 
-if [[ ! -e "$HOME/.dotfiles.git" ]]; then
+if [[ ! -e "$DOTFILES_GIT" ]]; then
   warning "dotfiles not found, cloning..."
-  dryrun_safe_exec git clone --bare --recurse-submodules https://github.com/naydichev/dotfiles.git "$HOME/.dotfiles.git"
-  dryrun_safe_exec git --git-dir="$HOME/.dotfiles.git" --work-tree="$HOME" checkout
-  dryrun_safe_exec git --git-dir="$HOME/.dotfiles.git" --work-tree="$HOME" config status.showUntrackedFiles no
+  dryrun_safe_exec git clone --bare --recurse-submodules "$DOTFILES_REPO_HTTPS" "$DOTFILES_GIT"
+  dryrun_safe_exec dit checkout
+  dryrun_safe_exec dit config status.showUntrackedFiles no
   SUMMARY_INSTALLED+=("dotfiles")
 
-  ## Switch dotfiles remote to SSH now that 1Password is set up
+  ## Switch dotfiles remote to SSH (will work once 1Password is set up)
   info "Switching dotfiles remote to SSH..."
-  dryrun_safe_exec git --git-dir="$HOME/.dotfiles.git" remote set-url origin git@github.com:naydichev/dotfiles.git
+  dryrun_safe_exec dit remote set-url origin "$DOTFILES_REPO_SSH"
 else
   success "dotfiles found"
+  info "Pulling latest changes..."
+  if ! dryrun_safe_exec dit pull --rebase --autostash; then
+    warning "Failed to pull dotfiles (may have conflicts or be offline)"
+    if ! confirm "Continue anyway?"; then
+      error "Aborting. Please resolve conflicts manually and re-run."
+      exit 1
+    fi
+  fi
+  info "Updating submodules..."
+  dryrun_safe_exec dit submodule update --init --recursive
   SUMMARY_FOUND+=("dotfiles")
 fi
 
@@ -99,10 +168,10 @@ fi
 
 info "Checking for oh-my-zsh..."
 
-if [[ ! -e "$HOME/.oh-my-zsh" ]]; then
+if [[ ! -e "$OH_MY_ZSH_HOME" ]]; then
   warning "oh-my-zsh not found, installing..."
   export RUNZSH=no
-  dryrun_safe_exec sh -c '$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)'
+  dryrun_safe_exec sh -c "$(curl -fsSL "$OH_MY_ZSH_INSTALL")"
   unset RUNZSH
   SUMMARY_INSTALLED+=("oh-my-zsh")
 else
@@ -114,8 +183,8 @@ fi
 
 info "Initializing dotfile submodules (powerlevel10k, zsh-autosuggestions, zsh-syntax-highlighting)..."
 
-if [[ ! -e "$HOME/.dotfiles/zsh/themes/powerlevel10k/README.md" ]]; then
-  dryrun_safe_exec git --git-dir="$HOME/.dotfiles.git" --work-tree="$HOME" submodule update --init --recursive
+if [[ ! -e "$DOTFILES_HOME/zsh/themes/powerlevel10k/README.md" ]]; then
+  dryrun_safe_exec dit submodule update --init --recursive
   SUMMARY_INSTALLED+=("zsh submodules")
 else
   success "submodules already initialized"
@@ -126,12 +195,12 @@ fi
 
 info "Checking default shell..."
 
-if [[ "$SHELL" != "$(which zsh)" ]]; then
-  warning "zsh is not the default shell, changing..."
-  dryrun_safe_exec chsh -s "$(which zsh)"
-  SUMMARY_INSTALLED+=("zsh as default shell")
+if [[ "$(basename "$SHELL")" != "zsh" ]]; then
+  error "Default shell is not zsh (found: $SHELL)"
+  error "Please change your default shell to zsh manually: chsh -s \$(command -v zsh)"
+  SUMMARY_WARNINGS+=("Default shell is not zsh")
 else
-  success "zsh is already the default shell"
+  success "zsh is the default shell"
   SUMMARY_FOUND+=("zsh as default shell")
 fi
 
@@ -140,8 +209,8 @@ fi
 OS=$(uname)
 
 if [[ "$OS" != "Darwin" ]]; then
-  warning "Not a mac, skipping homebrew"
-  SUMMARY_SKIPPED+=("homebrew")
+  warning "Not a mac, skipping macOS setup"
+  SUMMARY_SKIPPED+=("homebrew" "homebrew casks" "homebrew formulae" "macOS config symlinks" "macOS defaults")
 else
   info "Checking for homebrew..."
 
@@ -171,13 +240,51 @@ else
   CASK_LIST=$(printf "\n   - %s" "${CASKS[@]}")
   info "Going to install the following casks via homebrew:${CASK_LIST}"
 
-  if confirm "Ready to install casks?" y; then
+  if confirm "Ready to install casks?"; then
     dryrun_safe_exec brew install --cask "${CASKS[@]}"
     info "Resetting QuickLook server..."
     dryrun_safe_exec qlmanage -r
     SUMMARY_INSTALLED+=("homebrew casks")
   else
     SUMMARY_SKIPPED+=("homebrew casks")
+  fi
+
+  ## macOS-specific config symlinks (1Password integration)
+  info "Setting up macOS-specific config symlinks..."
+
+  # Ensure ~/.ssh exists with correct permissions
+  if [[ ! -d "$SSH_DIR" ]]; then
+    dryrun_safe_exec mkdir -p "$SSH_DIR"
+    dryrun_safe_exec chmod 700 "$SSH_DIR"
+  fi
+
+  declare -A SYMLINKS=(
+    ["$GIT_DARWIN_1PASSWORD_TARGET"]="$GIT_DARWIN_1PASSWORD_SOURCE"
+    ["$SSH_DARWIN_1PASSWORD_TARGET"]="$SSH_DARWIN_1PASSWORD_SOURCE"
+  )
+
+  SYMLINKS_CREATED=false
+  for TARGET in "${!SYMLINKS[@]}"; do
+    SOURCE="${SYMLINKS[$TARGET]}"
+
+    if [[ "$(readlink "$TARGET" 2>/dev/null)" == "$SOURCE" ]]; then
+      success "$(basename "$TARGET") symlink already correct"
+    else
+      if [[ -e "$TARGET" || -L "$TARGET" ]]; then
+        warning "Backing up existing $(basename "$TARGET")"
+        dryrun_safe_exec mv "$TARGET" "${TARGET}.bak"
+        SUMMARY_WARNINGS+=("Backed up $(basename "$TARGET") to $(basename "$TARGET").bak")
+      fi
+      dryrun_safe_exec ln -sf "$SOURCE" "$TARGET"
+      success "Symlinked $(basename "$TARGET")"
+      SYMLINKS_CREATED=true
+    fi
+  done
+
+  if $SYMLINKS_CREATED; then
+    SUMMARY_INSTALLED+=("macOS config symlinks")
+  else
+    SUMMARY_FOUND+=("macOS config symlinks")
   fi
 
   FORMULAE=(
@@ -191,7 +298,7 @@ else
   FORMULAE_LIST=$(printf "\n   - %s" "${FORMULAE[@]}")
   info "Going to install the following formulae via homebrew:${FORMULAE_LIST}"
 
-  if confirm "Ready to install formulae?" y; then
+  if confirm "Ready to install formulae?"; then
     dryrun_safe_exec brew install "${FORMULAE[@]}"
     SUMMARY_INSTALLED+=("homebrew formulae")
   else
@@ -224,15 +331,22 @@ fi
 
 ## LazyVim
 
-if confirm "Setup LazyVim?"; then
+info "Checking for LazyVim..."
+
+if [[ -f "$NVIM_CONFIG/lua/config/lazy.lua" ]]; then
+  success "LazyVim already installed"
+  SUMMARY_FOUND+=("LazyVim")
+elif confirm "Setup LazyVim?"; then
   info "Backing up existing neovim configs..."
-  backup_if_exists "$HOME/.config/nvim"
-  backup_if_exists "$HOME/.local/share/nvim"
-  backup_if_exists "$HOME/.local/state/nvim"
-  backup_if_exists "$HOME/.cache/nvim"
+  backup_if_exists "$NVIM_CONFIG"
+  backup_if_exists "$NVIM_DATA"
+  backup_if_exists "$NVIM_STATE"
+  backup_if_exists "$NVIM_CACHE"
 
   info "Cloning LazyVim starter..."
-  dryrun_safe_exec git clone https://github.com/LazyVim/starter "$HOME/.config/nvim"
+  dryrun_safe_exec git clone "$LAZYVIM_REPO" "$NVIM_CONFIG"
+  info "Removing LazyVim .git directory..."
+  dryrun_safe_exec rm -rf "$NVIM_CONFIG/.git"
   SUMMARY_INSTALLED+=("LazyVim")
 else
   SUMMARY_SKIPPED+=("LazyVim")
@@ -242,16 +356,16 @@ fi
 
 info "Checking for .gitconfig-local..."
 
-if [[ -e "$HOME/.gitconfig-local" ]]; then
+if [[ -e "$GITCONFIG_LOCAL" ]]; then
   success ".gitconfig-local found"
   SUMMARY_FOUND+=(".gitconfig-local")
 else
   if $DRYRUN; then
-    echo -e "  ${YELLOW}[DRYRUN]${RESET} Would prompt for git email and write ~/.gitconfig-local"
+    echo -e "  ${YELLOW}[DRYRUN]${RESET} Would prompt for git email and write $GITCONFIG_LOCAL"
     SUMMARY_SKIPPED+=(".gitconfig-local")
   else
     read -r -p "Enter your git email address: " GIT_EMAIL
-    cat > "$HOME/.gitconfig-local" <<EOF
+    cat >"$GITCONFIG_LOCAL" <<EOF
 [user]
     email = ${GIT_EMAIL}
 EOF
@@ -286,9 +400,16 @@ if [[ ${#SUMMARY_SKIPPED[@]} -gt 0 ]]; then
   done
 fi
 
+if [[ ${#SUMMARY_WARNINGS[@]} -gt 0 ]]; then
+  echo -e "${RED}Warnings:${RESET}"
+  for item in "${SUMMARY_WARNINGS[@]}"; do
+    echo "  ! $item"
+  done
+fi
+
 echo -e "───────────────────────────────"
 echo -e "\n${YELLOW}${BOLD}Manual steps required — see README for details:${RESET}"
 echo "  · Set up 1Password and enable the SSH agent"
 echo "  · Enable 1Password commit signing in developer settings"
-echo "  · Set up powerlevel10k (run: p10k configure)"
 echo -e "───────────────────────────────\n"
+
