@@ -159,9 +159,11 @@ else
     busycal
     firefox
     ghostty
+    qlmarkdown
     raycast
     readdle-spark
     spotify
+    syntax-highlight
     telegram
     whatsapp
   )
@@ -171,6 +173,8 @@ else
 
   if confirm "Ready to install casks?" y; then
     dryrun_safe_exec brew install --cask "${CASKS[@]}"
+    info "Resetting QuickLook server..."
+    dryrun_safe_exec qlmanage -r
     SUMMARY_INSTALLED+=("homebrew casks")
   else
     SUMMARY_SKIPPED+=("homebrew casks")
