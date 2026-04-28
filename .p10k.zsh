@@ -33,6 +33,7 @@
   typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(
     # =========================[ Line #1 ]=========================
     os_icon                 # os identifier
+    hostname
     dir                     # current directory
     vcs                     # git status
     # =========================[ Line #2 ]=========================
@@ -1743,3 +1744,8 @@ typeset -g POWERLEVEL9K_CONFIG_FILE=${${(%):-%x}:a}
 
 (( ${#p10k_config_opts} )) && setopt ${p10k_config_opts[@]}
 'builtin' 'unset' 'p10k_config_opts'
+
+typeset -g POWERLEVEL9K_MY_HOST_ICON_BEFORE_CONTENT=true
+function prompt_hostname() {
+  p10k segment -f green -t $'\uF109  %m'
+}
